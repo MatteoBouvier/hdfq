@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "hq"
+version = "0.1.0"
+description = "Command-line HDF5 processor"
+authors = ["Matteo Bouvier <m.bouvier@vidium-solutions.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+ch5mpy = {git = "git@gitlab.vidium.fr:vidium/ch5mpy.git"}
+typer = "^0.9.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,15 +1,15 @@
+import ch5mpy as ch
 import typer
 
-import ch5mpy as ch
 from hq.parse import parse
 
 
 def main(path: str, pattern: str) -> None:
     with ch.options(error_mode="ignore"):
-        h5_object = ch.H5Dict.read(path)
+        h5_object = ch.H5Dict.read(path, mode=ch.H5Mode.READ_WRITE_CREATE)
 
-        for token in parse(pattern):
-            h5_object = token(h5_object)
+        tree = parse(pattern)
+        tree.run(h5_object)
 
 
 if __name__ == "__main__":

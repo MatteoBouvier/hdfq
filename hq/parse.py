@@ -1,12 +1,32 @@
-import functools
+from __future__ import annotations
+
 import re
 from enum import Enum
-from typing import Any, Callable, Generator, Iterable, NamedTuple
+from typing import Any, Iterable, NamedTuple, Protocol, cast
 
 import ch5mpy as ch
+
 from hq.exceptions import ParseError
 
 PARSE_OBJECT = ch.H5Dict[Any] | ch.Dataset[Any] | list[str] | dict[str, Any]
+
+
+class PARSE_FUNC_base(Protocol):
+    def __call__(self, obj: PARSE_OBJECT) -> PARSE_OBJECT:
+        ...
+
+
+class PARSE_FUNC_get(Protocol):
+    def __call__(self, obj: PARSE_OBJECT, key: str) -> PARSE_OBJECT:
+        ...
+
+
+class PARSE_FUNC_set(Protocol):
+    def __call__(self, obj: PARSE_OBJECT, key: str, value: Any) -> PARSE_OBJECT:
+        ...
+
+
+PARSE_FUNC = PARSE_FUNC_base | PARSE_FUNC_get | PARSE_FUNC_set
 
 
 def repr_dict(key_value: tuple[str, Any]) -> str:
@@ -31,21 +51,21 @@ def display(obj: PARSE_OBJECT) -> PARSE_OBJECT:
 
 
 def get_object(obj: PARSE_OBJECT, key: str) -> PARSE_OBJECT:
-    if isinstance(obj, (list, ch.Dataset)):
+    if not isinstance(obj, (ch.H5Dict, dict)):
         raise ParseError
 
     return obj[key]
 
 
-def get_attribute(obj: PARSE_OBJECT, attr: str) -> None:
-    if isinstance(obj, list):
+def get_attribute(obj: PARSE_OBJECT, key: str) -> PARSE_OBJECT:
+    if not isinstance(obj, (ch.H5Dict, ch.Dataset)):
         raise ParseError
 
-    return obj.attributes[attr]
+    return obj.attributes[key]
 
 
 def get_keys(obj: PARSE_OBJECT) -> list[str]:
-    if isinstance(obj, (list, ch.Dataset)):
+    if not isinstance(obj, ch.H5Dict):
         raise ParseError
 
     return list(obj.keys())
@@ -65,56 +85,146 @@ def get_keys_attributes(obj: PARSE_OBJECT) -> list[str]:
     return list(obj.attributes.keys())
 
 
-class Token(NamedTuple):
-    type: str
-    function: Callable
-    arg: str | None = None
+def set_key_value(obj: PARSE_OBJECT, key: str, value: Any) -> PARSE_OBJECT:
+    if not isinstance(obj, (ch.H5Dict, dict)):
+        raise ParseError
 
-    def __call__(self, obj: ch.H5Dict[Any]) -> ch.H5Dict[Any]:
-        if self.arg is None:
-            return self.function(obj)
-        return self.function(obj, self.arg)
+    obj[key] = value
+
+    return obj
 
 
-class Tokens(functools.partial[Token], Enum):
-    Get = functools.partial(Token, "Get", get_object)
-    Get_attr = functools.partial(Token, "Get_attr", get_attribute)
-    Display = functools.partial(Token, "Display", display)
-    Keys = functools.partial(Token, "Keys", get_keys)
-    Attributes = functools.partial(Token, "Attributes", get_attributes)
-    Keys_attr = functools.partial(Token, "Keys_attr", get_keys_attributes)
+def set_attribute_key_value(obj: PARSE_OBJECT, key: str, value: Any) -> PARSE_OBJECT:
+    if not isinstance(obj, (ch.H5Dict, ch.Dataset)):
+        raise ParseError
+
+    obj.attributes[key] = value
+
+    return obj.attributes.as_dict()
 
 
-def iter_operations(group: str) -> Iterable[str | tuple[str, str]]:
-    it = filter(None, re.split(r"(\W)", group))
-    for n in it:
-        if n in {".", "#"}:
-            yield n, next(it)
+class Node(NamedTuple):
+    name: str
+    function: PARSE_FUNC
+    args: tuple[str, ...] = ()
+
+    def __repr__(self) -> str:
+        return f"{self.name}({','.join(self.args)})"
+
+    def with_args(self, *args: str) -> Node:
+        return Node(self.name, self.function, args)
+
+    def run(self, obj: PARSE_OBJECT) -> PARSE_OBJECT:
+        if self.args is None:
+            return cast(PARSE_FUNC_base, self.function)(obj)
+        return self.function(obj, *self.args)
+
+
+class Nodes(Node, Enum):  # pyright: ignore[reportIncompatibleVariableOverride]
+    Display = Node("Display", function=display)
+    Keys = Node("Keys", get_keys)
+    Get = Node("Get", get_object)
+    Set = Node("Set", set_key_value)
+    Attrs = Node("Attrs", get_attributes)
+    Attr_keys = Node("Attr_keys", get_keys_attributes)
+    Attr_get = Node("Attr_get", get_attribute)
+    Attr_set = Node("Attr_set", set_attribute_key_value)
+
+
+class Tokens(str, Enum):
+    GET = "."
+    GET_ATTR = "#"
+    SET = "="
+    KEYS = "keys"
+    ATTRS = "attrs"
+    ATTR_KEYS = "kattrs"
+    DEL = "del"
+
+
+def _get_next_4(tokens_list: list[str], index: int) -> tuple[str, str | None, str | None, str | None]:
+    return (
+        tokens_list[index],
+        tokens_list[index + 1] if index + 1 < len(tokens_list) else None,
+        tokens_list[index + 2] if index + 2 < len(tokens_list) else None,
+        tokens_list[index + 3] if index + 3 < len(tokens_list) else None,
+    )
+
+
+def tokens(group: str) -> Iterable[str | tuple[str, str] | tuple[str, str, str, str]]:
+    if group in {"", "."}:
+        return
+
+    tokens_list = list(filter(None, re.split(r"([^a-zA-Z0-9_'\"-])", group)))
+
+    i = 0
+    while i < len(tokens_list):
+        a, b, c, d = _get_next_4(tokens_list, i)
+
+        if a in {Tokens.GET, Tokens.GET_ATTR}:
+            if c == Tokens.SET:
+                if b is None or c is None or d is None:
+                    raise ParseError
+
+                yield a, b, c, d
+                i += 4
+
+            else:
+                if b is None:
+                    raise ParseError
+
+                yield a, b
+                i += 2
+
+        elif a == "del":
+            pass
 
         else:
-            yield n
+            yield a
+            i += 1
 
 
-def parse(pattern: str) -> Generator[Token, None, None]:
+class Tree:
+    def __init__(self) -> None:
+        self.body: list[Node] = []
+
+    def __repr__(self) -> str:
+        return f"AST(\n\tbody={self.body}\n)"
+
+    def run(self, h5_object: PARSE_OBJECT) -> None:
+        for node in self.body:
+            h5_object = node.run(h5_object)
+
+
+def parse(pattern: str) -> Tree:
+    tree = Tree()
+
     for group in pattern.replace(" ", "").split("|"):
-        for operation in iter_operations(group):
+        for operation in tokens(group):
             match operation:
-                case "keys":
-                    yield Tokens.Keys()
+                case Tokens.KEYS:
+                    tree.body.append(Nodes.Keys)
 
-                case "attrs":
-                    yield Tokens.Attributes()
+                case Tokens.ATTRS:
+                    tree.body.append(Nodes.Attrs)
 
-                case "kattrs":
-                    yield Tokens.Keys_attr()
+                case Tokens.ATTR_KEYS:
+                    tree.body.append(Nodes.Attr_keys)
 
-                case ".", key:
-                    yield Tokens.Get(key)
+                case Tokens.GET, key:
+                    tree.body.append(Nodes.Get.with_args(key))
 
-                case "#", attr:
-                    yield Tokens.Get_attr(attr)
+                case Tokens.GET, key, Tokens.SET, value:
+                    tree.body.append(Nodes.Set.with_args(key, value))
+
+                case Tokens.GET_ATTR, attr:
+                    tree.body.append(Nodes.Attr_get.with_args(attr))
+
+                case Tokens.GET_ATTR, key, Tokens.SET, value:
+                    tree.body.append(Nodes.Attr_set.with_args(key, value))
 
                 case _:
                     raise ParseError
 
-    yield Tokens.Display()
+    tree.body.append(Nodes.Display)
+
+    return tree

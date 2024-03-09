@@ -1,4 +1,5 @@
 import typer
+
 from hq.hq import main
 
 if __name__ == "__main__":

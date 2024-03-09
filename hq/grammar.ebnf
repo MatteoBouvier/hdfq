@@ -1,0 +1,39 @@
+statements: '|'.statement+
+
+statement:
+    | get_statement_all
+    | assignment
+    | descriptor
+    | function_call
+
+get_statement_all:
+    | ''
+    | '.'
+    | get_statement
+    
+get_statement:
+    | get_object [get_statement]
+    | get_attribute
+
+get_object: '.' IDENTIFIER
+
+get_attribute: '#' IDENTIFIER
+
+assignment: 
+    | get_statement_all '=' atom
+    | get_statement_all '=' get_statement
+
+atom:
+    | INTEGER
+    | FLOAT
+    | IDENTIFIER
+
+descriptor:
+    | 'keys'
+    | 'attrs'
+    | 'kattrs'
+
+function_call: function_name '(' get_statement ')'
+
+function_name:
+    | del

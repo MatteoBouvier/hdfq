@@ -1,7 +1,7 @@
+import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import sys
-from typing import Literal, NamedTuple
+from typing import Literal
 
 
 def myexcepthook(type, value, _):
@@ -64,3 +64,7 @@ class ParseError(Exception):
 
     def __str__(self) -> str:
         return f"{self.msg}{self._str_context()}"
+
+
+class EvalError(Exception):
+    pass

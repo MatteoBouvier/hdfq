@@ -2,7 +2,6 @@ import re
 from typing import Iterable
 
 from hq import tokens
-from hq.exceptions import ParseError
 from hq.syntax import Syntax
 from hq.tokens import Token
 
@@ -65,7 +64,7 @@ def lex(string: str) -> Token:
             return tokens.PIPE
 
         case _:
-            raise ParseError(f"Syntax error at : '{string}'")
+            raise SyntaxError(f"Syntax error at : '{string}'")
 
 
 def tokenize(string: str) -> Iterable[Token]:

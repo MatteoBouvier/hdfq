@@ -14,7 +14,7 @@ class Token(NamedTuple):
         return f"Token<{self.kind}={self.value}>"
 
     def short_repr(self) -> str:
-        return self.value
+        return str(self.kind.value) if self.value is None else str(self.value)
 
 
 KEYS = Token(Syntax.keys)

@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Iterator, Literal, cast
 
 import hq
-from hq.exceptions import ParseError
+from hq.exceptions import BinaryOpContext, ContextInfo, FunctionCallContext, GetStatementContext, ParseError
 from hq.lexer import Token, tokenize
 from hq.syntax import Syntax
 from hq.tokens import repr_tokens
@@ -89,41 +89,40 @@ def matches_whole(tokens: list[Token], allow_empty: bool) -> bool:
             return False
 
 
-def match_get_object(tokens: list[Token]) -> VTNode:
+def match_get_object(tokens: list[Token], *, allow_get_attr: bool, context: ContextInfo | None) -> VTNode:
     match tokens:
         case [*left, hq.tokens.DOT, Token(Syntax.identifier, value=value)]:
-            target = match_get_statement(left) if len(left) else Special.context
+            target = match_get_statement(left, context=context) if len(left) else Special.context
             return cast(VTNode, Nodes.Get(target=target, value=value))
 
-        case _:
-            raise ParseError(f"Got unexpected pattern : {repr_tokens(tokens)}")
-
-
-def match_get_attribute(tokens: list[Token]) -> VTNode:
-    match tokens:
         case [*left, hq.tokens.OCTOTHORPE, Token(Syntax.identifier, value=value)]:
-            target = match_get_statement(left, allow_get_attr=False) if len(left) else Special.context
+            if not allow_get_attr:
+                if isinstance(context, GetStatementContext):
+                    context.first = value
+                raise ParseError("Cannot get attribute ", context=context)
+
+            if context is None:
+                context = GetStatementContext(second=str(value))
+            target = match_get_statement(left, allow_get_attr=False, context=context) if len(left) else Special.context
             return cast(VTNode, Nodes.GetAttr(target=target, value=value))
 
         case _:
-            raise ParseError(f"Got unexpected pattern : {repr_tokens(tokens)}")
+            raise ParseError(f"Got unexpected pattern {repr_tokens(tokens)}", context=context)
 
 
-def match_get_statement(tokens: list[Token], allow_get_attr: bool = True) -> VTNode:
-    if allow_get_attr:
-        try:
-            return match_get_attribute(tokens)
-        except ParseError:
-            pass
-
-    return match_get_object(tokens)
+def match_get_statement(
+    tokens: list[Token], *, allow_get_attr: bool = True, context: ContextInfo | None = None
+) -> VTNode:
+    return match_get_object(tokens, allow_get_attr=allow_get_attr, context=context)
 
 
-def match_get_statement_all(tokens: list[Token], allow_empty: bool = False) -> Node | None:
+def match_get_statement_all(
+    tokens: list[Token], *, allow_empty: bool = False, context: BinaryOpContext | None = None
+) -> Node | None:
     if matches_whole(tokens, allow_empty=allow_empty):
         return None
 
-    return match_get_statement(tokens)
+    return match_get_statement(tokens, context=context)
 
 
 def match_assignment(tokens: list[Token]) -> Node | None:
@@ -133,7 +132,10 @@ def match_assignment(tokens: list[Token]) -> Node | None:
         return None
 
     left, right = tokens[:assign_index], tokens[assign_index + 1 :]
-    return Nodes.Assign(target=match_get_statement_all(left), value=match_atom(right) or match_get_statement_all(right))
+    return Nodes.Assign(
+        target=match_get_statement_all(left, context=BinaryOpContext("assignment", "left")),
+        value=match_atom(right) or match_get_statement_all(right, context=BinaryOpContext("assignment", "right")),
+    )
 
 
 def match_descriptor(tokens: list[Token]) -> Node | None:
@@ -154,7 +156,7 @@ def match_descriptor(tokens: list[Token]) -> Node | None:
 def match_function_call(tokens: list[Token]) -> Node | None:
     match tokens:
         case [hq.tokens.DEL, hq.tokens.LEFT_PARENTHESIS, *argument, hq.tokens.RIGHT_PARENTHESIS]:
-            target, value = match_get_statement(argument).unwrap()
+            target, value = match_get_statement(argument, context=FunctionCallContext("del")).unwrap()
             return Nodes.Del(target=target, value=value)
 
         case _:

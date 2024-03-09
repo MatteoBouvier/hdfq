@@ -1,15 +1,14 @@
-import sys
-
 import ch5mpy as ch
 import typer
 
 from hq.evaluation import eval
 from hq.parser import parse
 
+app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
+
+@app.command()
 def main(path: str, pattern: str) -> None:
-    sys.tracebacklimit = 0
-
     tree = parse(pattern)
 
     with ch.options(error_mode="ignore"):
@@ -18,4 +17,4 @@ def main(path: str, pattern: str) -> None:
 
 
 if __name__ == "__main__":
-    typer.run(main)
+    app()

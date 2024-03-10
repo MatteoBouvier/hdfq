@@ -2,6 +2,7 @@ from typing import Any, Literal, Protocol
 
 import ch5mpy as ch
 
+from hq.display import display
 from hq.exceptions import EvalError
 from hq.parser import Node, Special, Tree, VTNode
 
@@ -21,27 +22,6 @@ class EVAL_FUNC_set(Protocol):
 
 
 EVAL_FUNC = EVAL_FUNC_base | EVAL_FUNC_get | EVAL_FUNC_set
-
-
-def repr_dict(key_value: tuple[str, Any]) -> str:
-    k, v = key_value
-    return f"{repr(k)}: {repr(v)}"
-
-
-def display(obj: EVAL_OBJECT) -> EVAL_OBJECT:
-    if isinstance(obj, ch.H5Dict):
-        print(repr(obj)[6:])
-
-    elif isinstance(obj, list):
-        print("[\n\t" + ",\n\t".join(map(repr, obj)) + "\n]")
-
-    elif isinstance(obj, dict):
-        print("{\n\t" + ",\n\t".join(map(repr_dict, obj.items())) + "\n}")
-
-    else:
-        print(repr(obj))
-
-    return obj
 
 
 def get_object(obj: EVAL_OBJECT, key: str) -> EVAL_OBJECT:

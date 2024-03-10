@@ -17,6 +17,9 @@ rich = "^13.7.1"
 pytest = "^8.0.2"
 mypy = "^1.8.0"
 
+[tool.poetry.scripts]
+hq = "hq.hq:app"
+
 [tool.ruff]
 line-length = 120
 extend-select = ['I']

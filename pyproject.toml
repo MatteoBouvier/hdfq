@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hq"
-version = "0.1.0"
+version = "0.2.0"
 description = "Command-line HDF5 processor"
 authors = ["Matteo Bouvier <m.bouvier@vidium-solutions.com>"]
 license = "MIT"

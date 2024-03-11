@@ -34,10 +34,11 @@ def main(
         rich_format_error(click.UsageError(f"{path} does not exist for 'PATH'.", ctx=ctx))
         raise typer.Exit(code=1)
 
-    tree = parse(filter)
+    tree, requires_write_access = parse(filter)
+    mode = ch.H5Mode.READ_WRITE if requires_write_access else ch.H5Mode.READ
 
     with ch.options(error_mode="ignore"):
-        h5_object = ch.H5Dict.read(path, mode=ch.H5Mode.READ_WRITE_CREATE)
+        h5_object = ch.H5Dict.read(path, mode=mode)
         hdfq_eval(tree, h5_object)
 
 

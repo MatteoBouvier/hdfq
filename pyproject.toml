@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hdfq"
-version = "0.3.0"
+version = "0.3.2"
 description = "Command-line HDF5 processor"
 authors = ["Matteo Bouvier <m.bouvier@vidium-solutions.com>"]
 license = "MIT"

@@ -163,13 +163,12 @@ def match_function_call(tokens: list[Token]) -> Node | None:
             return None
 
 
-def match_statement(tokens: list[Token]) -> Node | None:
-    return (
-        match_assignment(tokens)
-        or match_descriptor(tokens)
-        or match_function_call(tokens)
-        or match_get_statement_all(tokens, allow_empty=True)
-    )
+def match_statement(tokens: list[Token]) -> tuple[Node | None, bool]:
+    node = match_assignment(tokens) or match_function_call(tokens)
+    if node is not None:
+        return node, True
+
+    return (match_descriptor(tokens) or match_get_statement_all(tokens, allow_empty=True)), False
 
 
 def split_at_pipes(tokens: list[Token]) -> Iterator[list[Token]]:
@@ -182,19 +181,21 @@ def split_at_pipes(tokens: list[Token]) -> Iterator[list[Token]]:
         yield tokens
 
 
-def match_statements(tokens: list[Token]) -> list[Node]:
+def match_statements(tokens: list[Token]) -> tuple[list[Node], bool]:
     statements: list[Node] = []
+    requires_write_access = False
 
     for statement in split_at_pipes(tokens):
-        matched_statement = match_statement(statement)
+        matched_statement, is_write_operation = match_statement(statement)
         if matched_statement is not None:
             statements.append(matched_statement)
+            requires_write_access = requires_write_access or is_write_operation
 
-    return statements
+    return statements, requires_write_access
 
 
-def parse(filter: str) -> Tree:
+def parse(filter: str) -> tuple[Tree, bool]:
     tokens = list(tokenize(filter))
-    nodes = match_statements(tokens)
+    nodes, requires_write_access = match_statements(tokens)
 
-    return Tree(body=nodes + [Nodes.Display()])
+    return Tree(body=nodes + [Nodes.Display()]), requires_write_access

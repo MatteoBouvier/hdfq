@@ -34,6 +34,12 @@ A typical hdfq command would look like :
 ```shell
 hdfq "." path/to/hdf5/file
 ```
+
+👆 Tip : you can also invoke hdfq as :
+```shell
+echo path/to/hdf5/file | hdfq "."
+```
+
 The filter argument can be used to :
 - read a specific object (stored under the `<name>` identifier) from the file with `.<name>`
 - read a specific attribute from an object with `#<attr_name>`

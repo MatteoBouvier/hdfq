@@ -1,9 +1,9 @@
 import re
 from typing import Iterable
 
-from hq import tokens
-from hq.syntax import Syntax
-from hq.tokens import Token
+from hdfq import tokens
+from hdfq.syntax import Syntax
+from hdfq.tokens import Token
 
 
 def is_int(string: str) -> bool:

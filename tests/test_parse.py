@@ -1,7 +1,7 @@
 import pytest
 
-from hq.exceptions import ParseError
-from hq.parser import Nodes, Special, parse
+from hdfq.exceptions import ParseError
+from hdfq.parser import Nodes, Special, parse
 
 
 def test_parse_get_whole():

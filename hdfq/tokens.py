@@ -1,7 +1,7 @@
 import functools
 from typing import NamedTuple
 
-from hq.syntax import Syntax
+from hdfq.syntax import Syntax
 
 
 class Token(NamedTuple):

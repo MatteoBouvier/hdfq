@@ -1,5 +1,5 @@
-from hq.lexer import Token, tokenize
-from hq.syntax import Syntax
+from hdfq.lexer import Token, tokenize
+from hdfq.syntax import Syntax
 
 
 def test_lex_empty_pattern():

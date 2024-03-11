@@ -13,7 +13,7 @@ from rich.table import Table
 from rich.theme import Theme
 
 if TYPE_CHECKING:
-    from hq.evaluation import EVAL_OBJECT
+    from hdfq.evaluation import EVAL_OBJECT
 
 
 class H5Highlighter(RegexHighlighter):

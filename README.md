@@ -12,8 +12,8 @@ The recommended way of installing **hdfq** is trough the pipx installer :
 
 ```shell
 pipx install git+ssh://git@gitlab.vidium.fr/vidium/hq.git
-pipx inject hdfq packaging
 ```
+
 `hdfq` will be installed in an isolated environment but will be available globally as a shell application.
 
 ### from source

@@ -5,7 +5,7 @@ from typing import Literal
 
 
 def myexcepthook(type, value, _):
-    print(f"hq: {type.__name__}: {value}")
+    print(f"hdfq: {type.__name__}: {value}")
 
 
 sys.excepthook = myexcepthook

@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Iterator, Literal, cast
 
-import hq
-from hq.exceptions import BinaryOpContext, ContextInfo, FunctionCallContext, GetStatementContext, ParseError
-from hq.lexer import Token, tokenize
-from hq.syntax import Syntax
-from hq.tokens import repr_tokens
+import hdfq
+from hdfq.exceptions import BinaryOpContext, ContextInfo, FunctionCallContext, GetStatementContext, ParseError
+from hdfq.lexer import Token, tokenize
+from hdfq.syntax import Syntax
+from hdfq.tokens import repr_tokens
 
 
 class Special(str, Enum):
@@ -82,7 +82,7 @@ def matches_whole(tokens: list[Token], allow_empty: bool) -> bool:
         case []:
             return allow_empty
 
-        case [hq.tokens.DOT]:
+        case [hdfq.tokens.DOT]:
             return True
 
         case _:
@@ -91,11 +91,11 @@ def matches_whole(tokens: list[Token], allow_empty: bool) -> bool:
 
 def match_get_object(tokens: list[Token], *, allow_get_attr: bool, context: ContextInfo | None) -> VTNode:
     match tokens:
-        case [*left, hq.tokens.DOT, Token(Syntax.identifier, value=value)]:
+        case [*left, hdfq.tokens.DOT, Token(Syntax.identifier, value=value)]:
             target = match_get_statement(left, context=context) if len(left) else Special.context
             return cast(VTNode, Nodes.Get(target=target, value=value))
 
-        case [*left, hq.tokens.OCTOTHORPE, Token(Syntax.identifier, value=value)]:
+        case [*left, hdfq.tokens.OCTOTHORPE, Token(Syntax.identifier, value=value)]:
             if not allow_get_attr:
                 if isinstance(context, GetStatementContext):
                     context.first = value
@@ -127,7 +127,7 @@ def match_get_statement_all(
 
 def match_assignment(tokens: list[Token]) -> Node | None:
     try:
-        assign_index = tokens.index(hq.tokens.EQUAL)
+        assign_index = tokens.index(hdfq.tokens.EQUAL)
     except ValueError:
         return None
 
@@ -140,13 +140,13 @@ def match_assignment(tokens: list[Token]) -> Node | None:
 
 def match_descriptor(tokens: list[Token]) -> Node | None:
     match tokens:
-        case [hq.tokens.KEYS]:
+        case [hdfq.tokens.KEYS]:
             return Nodes.Keys()
 
-        case [hq.tokens.ATTRIBUTES]:
+        case [hdfq.tokens.ATTRIBUTES]:
             return Nodes.Attrs()
 
-        case [hq.tokens.ATTRIBUTE_KEYS]:
+        case [hdfq.tokens.ATTRIBUTE_KEYS]:
             return Nodes.AttrKeys()
 
         case _:
@@ -155,7 +155,7 @@ def match_descriptor(tokens: list[Token]) -> Node | None:
 
 def match_function_call(tokens: list[Token]) -> Node | None:
     match tokens:
-        case [hq.tokens.DEL, hq.tokens.LEFT_PARENTHESIS, *argument, hq.tokens.RIGHT_PARENTHESIS]:
+        case [hdfq.tokens.DEL, hdfq.tokens.LEFT_PARENTHESIS, *argument, hdfq.tokens.RIGHT_PARENTHESIS]:
             target, value = match_get_statement(argument, context=FunctionCallContext("del")).unwrap()
             return Nodes.Del(target=target, value=value)
 
@@ -174,7 +174,7 @@ def match_statement(tokens: list[Token]) -> Node | None:
 
 def split_at_pipes(tokens: list[Token]) -> Iterator[list[Token]]:
     try:
-        index = tokens.index(hq.tokens.PIPE)
+        index = tokens.index(hdfq.tokens.PIPE)
         yield tokens[:index]
         yield from split_at_pipes(tokens[index + 1 :])
 

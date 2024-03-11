@@ -2,9 +2,9 @@ from typing import Any, Literal, Protocol
 
 import ch5mpy as ch
 
-from hq.display import display
-from hq.exceptions import EvalError
-from hq.parser import Node, Special, Tree, VTNode
+from hdfq.display import display
+from hdfq.exceptions import EvalError
+from hdfq.parser import Node, Special, Tree, VTNode
 
 EVAL_OBJECT = ch.H5Dict[Any] | ch.Dataset[Any] | ch.AttributeManager | list[str] | dict[str, Any]
 

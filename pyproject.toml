@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "hq"
+name = "hdfq"
 version = "0.2.0"
 description = "Command-line HDF5 processor"
 authors = ["Matteo Bouvier <m.bouvier@vidium-solutions.com>"]
@@ -18,7 +18,7 @@ pytest = "^8.0.2"
 mypy = "^1.8.0"
 
 [tool.poetry.scripts]
-hq = "hq.hq:app"
+hdfq = "hdfq.hdfq:app"
 
 [tool.ruff]
 line-length = 120

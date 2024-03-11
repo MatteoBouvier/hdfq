@@ -11,7 +11,7 @@ It uses syntax similar to [jq](https://jqlang.github.io/jq/) although it does no
 The recommended way of installing **hdfq** is trough the pipx installer : 
 
 ```shell
-pipx install git+ssh://git@gitlab.vidium.fr/vidium/hq.git
+pipx install git+ssh://git@gitlab.vidium.fr/vidium/hdfq.git
 ```
 
 `hdfq` will be installed in an isolated environment but will be available globally as a shell application.
@@ -21,7 +21,7 @@ pipx install git+ssh://git@gitlab.vidium.fr/vidium/hq.git
 You can download the source code from gitlab with :
 
 ```shell
-git clone git@gitlab.vidium.fr:vidium/hq.git
+git clone git@gitlab.vidium.fr:vidium/hdfq.git
 ```
 
 ## Usage

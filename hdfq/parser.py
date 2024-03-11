@@ -193,8 +193,8 @@ def match_statements(tokens: list[Token]) -> list[Node]:
     return statements
 
 
-def parse(pattern: str) -> Tree:
-    tokens = list(tokenize(pattern))
+def parse(filter: str) -> Tree:
+    tokens = list(tokenize(filter))
     nodes = match_statements(tokens)
 
     return Tree(body=nodes + [Nodes.Display()])

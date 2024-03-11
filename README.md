@@ -28,20 +28,20 @@ git clone git@gitlab.vidium.fr:vidium/hdfq.git
 
 ### Basics
 
-`hdfq` requires both a **pattern** (a command to be evaluated) and a **path** to a file saved in `hdf5` format.
+`hdfq` requires both a **filter** (a command to be evaluated) and a **path** to a file saved in `hdf5` format.
 A typical hdfq command would look like :
 
 ```shell
 hdfq "." path/to/hdf5/file
 ```
-The pattern argument can be used to :
+The filter argument can be used to :
 - read a specific object (stored under the `<name>` identifier) from the file with `.<name>`
 - read a specific attribute from an object with `#<attr_name>`
 - get the list of identifiers with `keys`, attributes with `attrs` and attribute identifiers with `kattrs`
 - set an object's value with `<object>=<value>`
 - delete an object with `del(<object>)`
 
-Command can be chained in the pattern argument using a `|` symbol.
+Commands can be chained in the filter argument using a `|` symbol.
 
 ### Examples
 
@@ -78,4 +78,3 @@ hdfq 'del(.obj)' file.h5
 ## TODO
 
 - indexing
-- better cli help

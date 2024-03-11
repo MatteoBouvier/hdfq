@@ -1,20 +1,20 @@
-# hq
+# hdfq
 
-`hq` is a CLI tool for displaying and manipulating hdf5 files.
+`hdfq` is a CLI tool for displaying and manipulating hdf5 files.
 It uses syntax similar to [jq](https://jqlang.github.io/jq/) although it does not yet support everything `jq` does.
-`hq` is written in Python.
+`hdfq` is written in Python.
 
 ## Installation
 
 ### with pipx
 
-The recommended way of installing **hq** is trough the pipx installer : 
+The recommended way of installing **hdfq** is trough the pipx installer : 
 
 ```shell
 pipx install git+ssh://git@gitlab.vidium.fr/vidium/hq.git
-pipx inject hq packaging
+pipx inject hdfq packaging
 ```
-`hq` will be installed in an isolated environment but will be available globally as a shell application.
+`hdfq` will be installed in an isolated environment but will be available globally as a shell application.
 
 ### from source
 
@@ -28,11 +28,11 @@ git clone git@gitlab.vidium.fr:vidium/hq.git
 
 ### Basics
 
-`hq` requires both a **pattern** (a command to be evaluated) and a **path** to a file saved in `hdf5` format.
-A typical hq command would look like :
+`hdfq` requires both a **pattern** (a command to be evaluated) and a **path** to a file saved in `hdf5` format.
+A typical hdfq command would look like :
 
 ```shell
-hq "." path/to/hdf5/file
+hdfq "." path/to/hdf5/file
 ```
 The pattern argument can be used to :
 - read a specific object (stored under the `<name>` identifier) from the file with `.<name>`
@@ -47,31 +47,31 @@ Command can be chained in the pattern argument using a `|` symbol.
 
 View all contents in a file :
 ```shell
-hq '.' file.h5
+hdfq '.' file.h5
 ```
 
 Read an object :
 ```shell
-hq '.a.b.c' file.h5
+hdfq '.a.b.c' file.h5
 ```
 Read an object's attribute :
 ```shell
-hq '.a.b#z' file.h5
+hdfq '.a.b#z' file.h5
 ```
 
 Chain commands :
 ```shell
-hq '.a.b | kattrs' file.h5
+hdfq '.a.b | kattrs' file.h5
 ```
 
 Update an object's value :
 ```shell
-hq '.a#version = 2' file.h5
+hdfq '.a#version = 2' file.h5
 ```
 
 Delete an object :
 ```shell
-hq 'del(.obj)' file.h5
+hdfq 'del(.obj)' file.h5
 ```
 
 

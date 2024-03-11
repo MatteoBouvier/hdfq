@@ -8,7 +8,7 @@ app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
 
 @app.command()
-def main(path: str, pattern: str) -> None:
+def main(pattern: str, path: str) -> None:
     tree = parse(pattern)
 
     with ch.options(error_mode="ignore"):

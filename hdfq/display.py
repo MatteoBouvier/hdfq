@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import re
+from itertools import repeat
 from typing import TYPE_CHECKING, Any
 
 import ch5mpy as ch
@@ -21,12 +22,12 @@ class H5Highlighter(RegexHighlighter):
     highlights = [
         r"(?P<bool_true>True)",
         r"(?P<bool_false>False)",
-        r"(?P<str>[\"'][a-zA-Z_]\w*[\"'])",
         r"(?P<number>(?<!\w)[+-]?\d+(?:\.\d*)?(?!\w))",
-        r"(?P<identifier>\.\w+(?=:))",
-        r"(?P<attribute>#\w+(?=:))",
-        r"(?P<value>\w+(?==))",
-        r"(?P<builtin>(?<!\w)(None|int\d*|float\d*|<U\d+))",
+        r"(?P<str>[b]?[\"'].*?[\"'…])",
+        r"(?P<identifier>\.[a-zA-Z_]\w*(?=:))",
+        r"(?P<attribute>#[a-zA-Z_]\w*(?=:))",
+        r"(?P<value>\.[a-zA-Z_]\w*?(?==))",
+        r"(?P<builtin>(?<!\w)(object|None|int\d*|float\d*|[><\|][USB]\d+))",
     ]
 
 
@@ -34,8 +35,8 @@ theme = Theme(
     {
         "h5.bool_true": "bold green",
         "h5.bool_false": "bold red",
-        "h5.str": "green",
         "h5.number": "cyan",
+        "h5.str": "green",
         "h5.identifier": "bold yellow",
         "h5.attribute": "italic grey70",
         "h5.value": "blue",
@@ -57,6 +58,30 @@ def repr_dict(obj: dict[str, Any] | ch.AttributeManager | ch.H5Dict, offset: int
         + f",\n{tabs}".join(map(lambda kv: f"{prefix}{kv[0]}: {repr_object(kv[1], offset=offset)}", obj.items()))
         + ",\n"
     )
+
+
+def repr_array_1d(obj: ch.H5Array[Any], table: Table) -> None:
+    if len(obj) <= 6:
+        table.add_row(*map(repr, obj))
+
+    else:
+        table.add_row(*map(repr, obj[:3]), "...", *map(repr, obj[-3:]))  # pyright: ignore[reportArgumentType]
+
+
+def repr_array_2d(obj: ch.H5Array[Any], table: Table) -> None:
+    if obj.shape[0] <= 6:
+        for row in range(obj.shape[0]):
+            repr_array_1d(obj[row], table)
+
+    else:
+        n_cols = obj.shape[1]
+        repr_array_1d(obj[0], table)
+        repr_array_1d(obj[1], table)
+        repr_array_1d(obj[2], table)
+        table.add_row(*repeat("...", n_cols if n_cols <= 6 else 7))
+        repr_array_1d(obj[obj.shape[0] - 3], table)
+        repr_array_1d(obj[obj.shape[0] - 2], table)
+        repr_array_1d(obj[obj.shape[0] - 1], table)
 
 
 def repr_object(obj: EVAL_OBJECT, offset: int) -> str:
@@ -98,11 +123,10 @@ def repr_object(obj: EVAL_OBJECT, offset: int) -> str:
 
         table = Table(show_header=False, show_lines=False, box=rich.box.ROUNDED)
         if obj.ndim == 1:
-            table.add_row(*map(repr, obj[:3]), "...", *map(repr, obj[-3:]))  # pyright: ignore[reportArgumentType]
+            repr_array_1d(obj, table)
 
         elif obj.ndim == 2:
-            for row in range(obj.shape[1]):
-                table.add_row(*map(str, obj[row]))  # pyright: ignore[reportArgumentType]
+            repr_array_2d(obj, table)
 
         else:
             table.add_row("...")

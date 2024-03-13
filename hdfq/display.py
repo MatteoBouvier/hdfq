@@ -22,12 +22,12 @@ class H5Highlighter(RegexHighlighter):
     highlights = [
         r"(?P<bool_true>True)",
         r"(?P<bool_false>False)",
-        r"(?P<number>(?<!\w)[+-]?\d+(?:\.\d*)?(?!\w))",
+        r"(?P<builtin>(?<!\w)(object|None|int\d*|float\d*|[><\|][USB]\d+))",
+        r"(?P<number>(?<!\w)[+-]?\d+(?:\.\d*)?(?:e(?:[+-](?:\d+)?)?)?…?(?!\w))",
         r"(?P<str>[b]?[\"'].*?[\"'…])",
         r"(?P<identifier>\.[a-zA-Z_]\w*(?=:))",
         r"(?P<attribute>#[a-zA-Z_]\w*(?=:))",
         r"(?P<value>\.[a-zA-Z_]\w*?(?==))",
-        r"(?P<builtin>(?<!\w)(object|None|int\d*|float\d*|[><\|][USB]\d+))",
     ]
 
 
@@ -35,12 +35,12 @@ theme = Theme(
     {
         "h5.bool_true": "bold green",
         "h5.bool_false": "bold red",
+        "h5.builtin": "orchid",
         "h5.number": "cyan",
         "h5.str": "green",
         "h5.identifier": "bold yellow",
         "h5.attribute": "italic grey70",
         "h5.value": "blue",
-        "h5.builtin": "orchid",
     }
 )
 console = Console(highlighter=H5Highlighter(), theme=theme)

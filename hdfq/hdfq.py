@@ -13,6 +13,15 @@ from hdfq.parser import parse
 app = typer.Typer(add_completion=False, pretty_exceptions_enable=False)
 
 
+def run(filter: str, path: Path) -> None:
+    tree, requires_write_access = parse(filter)
+    mode = ch.H5Mode.READ_WRITE if requires_write_access else ch.H5Mode.READ
+
+    with ch.options(error_mode="ignore"):
+        h5_object = ch.H5Dict.read(path, mode=mode)
+        hdfq_eval(tree, h5_object)
+
+
 @app.command()
 def main(
     ctx: typer.Context,
@@ -32,14 +41,10 @@ def main(
     """
     if not path.exists():
         rich_format_error(click.UsageError(f"{path} does not exist for 'PATH'.", ctx=ctx))
+
         raise typer.Exit(code=1)
 
-    tree, requires_write_access = parse(filter)
-    mode = ch.H5Mode.READ_WRITE if requires_write_access else ch.H5Mode.READ
-
-    with ch.options(error_mode="ignore"):
-        h5_object = ch.H5Dict.read(path, mode=mode)
-        hdfq_eval(tree, h5_object)
+    run(filter, path)
 
 
 if __name__ == "__main__":

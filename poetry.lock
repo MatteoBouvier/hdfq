@@ -13,6 +13,7 @@ develop = false
 h5py = "*"
 h5py-stubs = "^0.1.0"
 numpy = "*"
+packaging = "^24.0"
 tqdm = "*"
 typing-extensions = "^4.9.0"
 
@@ -20,7 +21,7 @@ typing-extensions = "^4.9.0"
 type = "git"
 url = "git@gitlab.vidium.fr:vidium/ch5mpy.git"
 reference = "HEAD"
-resolved_reference = "fd05ffe88a4fc4eea21f24f72560213d8deebe6d"
+resolved_reference = "67b95b0daf54faabf23f0ef87d8aa7b763fbbafc"
 
 [[package]]
 name = "click"

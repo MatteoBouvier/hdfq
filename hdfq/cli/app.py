@@ -65,6 +65,7 @@ def repair(
             show_default=False,
         ),
     ] = cast(Path, ... if sys.stdin.isatty() else Path(sys.stdin.read().strip())),
+    verbose: bool = False,
 ) -> None:
     """
     Repair corrupted HDF5 file by extracting valid groups and datasets.
@@ -79,7 +80,7 @@ def repair(
     with ch.File(path, mode=ch.H5Mode.READ) as corrupted_file, ch.File(
         restore_path, mode=ch.H5Mode.WRITE_TRUNCATE
     ) as new_file:
-        repair_group(corrupted_file, new_file)
+        repair_group(corrupted_file, new_file, verbose)
 
     path.unlink()
     restore_path.rename(path)

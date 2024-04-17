@@ -20,6 +20,7 @@ class Token(NamedTuple):
 KEYS = Token(Syntax.keys)
 ATTRIBUTES = Token(Syntax.attributes)
 ATTRIBUTE_KEYS = Token(Syntax.attribute_keys)
+SIZES = Token(Syntax.sizes)
 DEL = Token(Syntax.del_)
 
 DOT = Token(Syntax.dot)

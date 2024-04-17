@@ -6,6 +6,7 @@ class Syntax(str, Enum):
     keys = "keys"
     attributes = "attrs"
     attribute_keys = "kattrs"
+    sizes = "sizes"
     del_ = "del"
 
     # Punctuation ---------------------

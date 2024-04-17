@@ -31,3 +31,12 @@ def test_lex_pipe():
         Token(Syntax.pipe),
         Token(Syntax.keys),
     ]
+
+
+def test_lex_size():
+    assert list(tokenize(".a | sizes")) == [
+        Token(Syntax.dot),
+        Token(Syntax.identifier, "a"),
+        Token(Syntax.pipe),
+        Token(Syntax.sizes),
+    ]

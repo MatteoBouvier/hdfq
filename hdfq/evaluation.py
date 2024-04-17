@@ -2,7 +2,7 @@ from typing import Any, Literal, Protocol
 
 import ch5mpy as ch
 
-from hdfq.display import display
+from hdfq.display import display, nice_size_format
 from hdfq.exceptions import EvalError
 from hdfq.parser import Node, Special, Tree, VTNode
 
@@ -59,6 +59,30 @@ def get_attribute_keys(obj: EVAL_OBJECT) -> list[str]:
     return list(obj.attributes.keys())
 
 
+def get_sizes_core(obj: ch.H5Dict, sizes: dict[str, Any], cum_size: int) -> tuple[int, dict[str, Any]]:
+    for k, v in obj.items():
+        if not isinstance(v, ch.H5Dict):
+            sizes[k] = nice_size_format(v.size * v.dtype.itemsize)
+            cum_size += v.size * v.dtype.itemsize
+
+        else:
+            sub_cum_size, sub_sizes = get_sizes_core(v, {}, 0)
+            sizes[k + f"['{nice_size_format(sub_cum_size)}']"] = sub_sizes
+            cum_size += sub_cum_size
+
+    return cum_size, sizes
+
+
+def get_sizes(obj: EVAL_OBJECT) -> dict[str, Any]:
+    if not isinstance(obj, ch.H5Dict):
+        raise EvalError(f"Cannot get object sizes from '{type(obj).__name__}")
+
+    cum_sum, sizes = get_sizes_core(obj, {}, 0)
+    sizes["TOTAL"] = nice_size_format(cum_sum)
+
+    return sizes
+
+
 def set_key_value(obj: EVAL_OBJECT, key: str, value: Any) -> None:
     if not isinstance(obj, (ch.H5Dict, dict, ch.AttributeManager)):
         raise EvalError(f"Cannot assign value to '{type(obj).__name__}'")
@@ -98,6 +122,9 @@ def eval_statement(statement: Node | Literal[Special.context], context: EVAL_OBJ
 
         case Node(name="AttrKeys"):
             context = get_attribute_keys(context)
+
+        case Node(name="Size"):
+            context = get_sizes(context)
 
         case Node(name="Get", target=target, value=value):
             context = get_object(eval_statement(target, context), value)

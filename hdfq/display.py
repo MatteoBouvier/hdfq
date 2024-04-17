@@ -25,7 +25,7 @@ class H5Highlighter(RegexHighlighter):
         r"(?P<builtin>(?<!\w)(object|None|int\d*|float\d*|[><\|][USB]\d+))",
         r"(?P<number>(?<!\w)[+-]?\d+(?:\.\d*)?(?:e(?:[+-](?:\d+)?)?)?…?(?!\w))",
         r"(?P<str>[b]?[\"'].*?[\"'…])",
-        r"(?P<identifier>\.[a-zA-Z_]\w*(?=:))",
+        r"(?P<identifier>\.[a-zA-Z_]\w*(?=(?:\[.*\])?:))",
         r"(?P<attribute>#[a-zA-Z_]\w*(?=:))",
         r"(?P<value>\.[a-zA-Z_]\w*?(?==))",
     ]
@@ -105,7 +105,8 @@ def repr_object(obj: EVAL_OBJECT, offset: int) -> str:
 
     elif isinstance(obj, (dict, ch.AttributeManager)):
         if offset > 0:
-            return repr_dict(obj, offset=offset)
+            tabs = get_tabs(offset)
+            return f"{{\n{repr_dict(obj, offset=offset+1)}{tabs}}}"
 
         return f"{{\n{repr_dict(obj, offset=offset+1)}}}"
 
@@ -151,3 +152,17 @@ def repr_object(obj: EVAL_OBJECT, offset: int) -> str:
 
 def display(obj: EVAL_OBJECT) -> None:
     console.print(repr_object(obj, offset=0))
+
+
+def nice_size_format(size: int) -> str:
+    if size < 1e3:
+        return f"{size}B"
+
+    elif size < 1e6:
+        return f"{size/1e3:.2f}kB"
+
+    elif size < 1e9:
+        return f"{size/1e6:.2f}MB"
+
+    else:
+        return f"{size/1e9:.2f}GB"

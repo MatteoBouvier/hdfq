@@ -49,6 +49,7 @@ class Nodes(functools.partial[Node], Enum):
     Keys = functools.partial(Node, "Keys")
     Attrs = functools.partial(Node, "Attrs")
     AttrKeys = functools.partial(Node, "AttrKeys")
+    Sizes = functools.partial(Node, "Size")
     Constant = functools.partial(VNode, "Constant")
     Get = functools.partial(VTNode, name="Get")
     GetAttr = functools.partial(VTNode, name="GetAttr")
@@ -148,6 +149,9 @@ def match_descriptor(tokens: list[Token]) -> Node | None:
 
         case [hdfq.tokens.ATTRIBUTE_KEYS]:
             return Nodes.AttrKeys()
+
+        case [hdfq.tokens.SIZES]:
+            return Nodes.Sizes()
 
         case _:
             return None

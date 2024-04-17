@@ -6,25 +6,25 @@ from hdfq.parser import Nodes, Special, parse
 
 def test_parse_get_whole():
     tree = parse(".")
-    assert tree.body == [Nodes.Display()]
+    assert tree[0].body == [Nodes.Display()]
 
     tree = parse("")
-    assert tree.body == [Nodes.Display()]
+    assert tree[0].body == [Nodes.Display()]
 
 
 def test_parse_get_object():
     tree = parse(".a")
-    assert tree.body == [Nodes.Get(target=Special.context, value="a"), Nodes.Display()]
+    assert tree[0].body == [Nodes.Get(target=Special.context, value="a"), Nodes.Display()]
 
 
 def test_parse_get_nested_object():
     tree = parse(".a.b")
-    assert tree.body == [Nodes.Get(target=Nodes.Get(target=Special.context, value="a"), value="b"), Nodes.Display()]
+    assert tree[0].body == [Nodes.Get(target=Nodes.Get(target=Special.context, value="a"), value="b"), Nodes.Display()]
 
 
 def test_parse_get_attribute():
     tree = parse("#some_attr")
-    assert tree.body == [Nodes.GetAttr(target=Special.context, value="some_attr"), Nodes.Display()]
+    assert tree[0].body == [Nodes.GetAttr(target=Special.context, value="some_attr"), Nodes.Display()]
 
 
 def test_parse_get_attr_from_attr_should_error():
@@ -34,7 +34,7 @@ def test_parse_get_attr_from_attr_should_error():
 
 def test_parse_value_assignment():
     tree = parse(".b = -1")
-    assert tree.body == [
+    assert tree[0].body == [
         Nodes.Assign(target=Nodes.Get(target=Special.context, value="b"), value=Nodes.Constant(-1)),
         Nodes.Display(),
     ]
@@ -42,7 +42,7 @@ def test_parse_value_assignment():
 
 def test_parse_attr_assignment():
     tree = parse("#c = 'test'")
-    assert tree.body == [
+    assert tree[0].body == [
         Nodes.Assign(target=Nodes.GetAttr(target=Special.context, value="c"), value=Nodes.Constant("test")),
         Nodes.Display(),
     ]
@@ -60,12 +60,12 @@ def test_parse_invalid_empty_assignment():
 
 def test_parse_descriptor():
     tree = parse("keys")
-    assert tree.body == [Nodes.Keys(), Nodes.Display()]
+    assert tree[0].body == [Nodes.Keys(), Nodes.Display()]
 
 
 def test_parse_function_call():
     tree = parse("del(.a)")
-    assert tree.body == [
+    assert tree[0].body == [
         Nodes.Del(target=Special.context, value=Nodes.Get(target=Special.context, value="a")),
         Nodes.Display(),
     ]
@@ -73,7 +73,7 @@ def test_parse_function_call():
 
 def test_parse_function_call_nested():
     tree = parse("del(.a.b.c)")
-    assert tree.body == [
+    assert tree[0].body == [
         Nodes.Del(
             target=Nodes.Get(target=Nodes.Get(target=Special.context, value="a"), value="b"),
             value=Nodes.Get(target=Special.context, value="c"),
@@ -84,4 +84,4 @@ def test_parse_function_call_nested():
 
 def test_parse_multiple_statements():
     tree = parse(".obj | keys")
-    assert tree.body == [Nodes.Get(target=Special.context, value="obj"), Nodes.Keys(), Nodes.Display()]
+    assert tree[0].body == [Nodes.Get(target=Special.context, value="obj"), Nodes.Keys(), Nodes.Display()]

@@ -32,6 +32,7 @@ descriptor:
     | 'keys'
     | 'attrs'
     | 'kattrs'
+    | 'size'
 
 function_call: function_name '(' get_statement ')'
 

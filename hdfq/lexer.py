@@ -37,6 +37,9 @@ def lex(string: str) -> Token:
         case Syntax.attribute_keys:
             return tokens.ATTRIBUTE_KEYS
 
+        case Syntax.sizes:
+            return tokens.SIZES
+
         case Syntax.del_:
             return tokens.DEL
 

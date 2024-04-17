@@ -23,8 +23,8 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
-@app.callback(invoke_without_command=True, no_args_is_help=True)
-# @app.command(no_args_is_help=True)
+# @app.callback(invoke_without_command=True, no_args_is_help=True)
+@app.command(no_args_is_help=True)
 def main(
     ctx: typer.Context,
     filter: Annotated[str, typer.Argument(help="Command filter to evaluate", show_default=False)],
@@ -65,7 +65,7 @@ def repair(
             show_default=False,
         ),
     ] = cast(Path, ... if sys.stdin.isatty() else Path(sys.stdin.read().strip())),
-    verbose: bool = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="verbose output")] = False,
 ) -> None:
     """
     Repair corrupted HDF5 file by extracting valid groups and datasets.

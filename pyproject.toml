@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hdfq"
-version = "0.3.9"
+version = "0.4.0"
 description = "Command-line HDF5 processor"
 authors = ["Matteo Bouvier <m.bouvier@vidium-solutions.com>"]
 license = "MIT"
@@ -20,6 +20,7 @@ mypy = "^1.8.0"
 
 [tool.poetry.scripts]
 hdfq = "hdfq.cli.app:app"
+"hdfq+" = "hdfq.cli.tools:tools"
 
 [tool.ruff]
 line-length = 120

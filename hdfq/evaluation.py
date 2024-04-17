@@ -1,3 +1,4 @@
+import sys
 from typing import Any, Literal, Protocol
 
 import ch5mpy as ch
@@ -62,8 +63,14 @@ def get_attribute_keys(obj: EVAL_OBJECT) -> list[str]:
 def get_sizes_core(obj: ch.H5Dict, sizes: dict[str, Any], cum_size: int) -> tuple[int, dict[str, Any]]:
     for k, v in obj.items():
         if not isinstance(v, ch.H5Dict):
-            sizes[k] = nice_size_format(v.size * v.dtype.itemsize)
-            cum_size += v.size * v.dtype.itemsize
+            if isinstance(v, str):
+                v_size = sys.getsizeof(v)
+
+            else:
+                v_size = v.size * v.dtype.itemsize
+
+            sizes[k] = nice_size_format(v_size)
+            cum_size += v_size
 
         else:
             sub_cum_size, sub_sizes = get_sizes_core(v, {}, 0)

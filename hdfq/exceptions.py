@@ -53,6 +53,12 @@ class FunctionCallContext(ContextInfo):
         return f" while parsing arguments of {self.kind} function"
 
 
+@dataclass
+class DatasetCreationContext(ContextInfo):
+    def __repr__(self) -> str:
+        return " while parsing arguments for dataset creation"
+
+
 class ParseError(Exception):
     def __init__(self, msg: str = "", context: ContextInfo | None = None) -> None:
         super().__init__(msg)

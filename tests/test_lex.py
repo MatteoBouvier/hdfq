@@ -40,3 +40,30 @@ def test_lex_size():
         Token(Syntax.pipe),
         Token(Syntax.sizes),
     ]
+
+
+def test_lex_dataset_creation():
+    assert list(tokenize(".a = [0, chunks=true, maxshape=None](10, 20)<f>")) == [
+        Token(Syntax.dot),
+        Token(Syntax.identifier, "a"),
+        Token(Syntax.equal),
+        Token(Syntax.left_bracket),
+        Token(Syntax.integer, 0),
+        Token(Syntax.comma),
+        Token(Syntax.identifier, "chunks"),
+        Token(Syntax.equal),
+        Token(Syntax.boolean, True),
+        Token(Syntax.comma),
+        Token(Syntax.identifier, "maxshape"),
+        Token(Syntax.equal),
+        Token(Syntax.none),
+        Token(Syntax.right_bracket),
+        Token(Syntax.left_parenthesis),
+        Token(Syntax.integer, 10),
+        Token(Syntax.comma),
+        Token(Syntax.integer, 20),
+        Token(Syntax.right_parenthesis),
+        Token(Syntax.left_angle_bracket),
+        Token(Syntax.identifier, "f"),
+        Token(Syntax.right_angle_bracket),
+    ]

@@ -85,8 +85,8 @@ def repr_array_2d(obj: ch.H5Array[Any], table: Table) -> None:
 
 
 def repr_object(obj: EVAL_OBJECT, offset: int) -> str:
-    if isinstance(obj, ch.H5Dict):
-        if len(obj.keys()) + len(obj.attributes) == 0:
+    if isinstance(obj, (ch.H5Dict, ch.H5List)):
+        if len(obj) + len(obj.attributes) == 0:
             return "{}"
 
         if len(obj.attributes):
@@ -95,7 +95,10 @@ def repr_object(obj: EVAL_OBJECT, offset: int) -> str:
             attributes = ""
 
         if len(obj):
-            body = repr_dict(obj, offset=offset + 1)
+            if isinstance(obj, ch.H5List):
+                body = repr_dict(obj.to_dict(), offset=offset + 1)
+            else:
+                body = repr_dict(obj, offset=offset + 1)
         else:
             body = ""
 

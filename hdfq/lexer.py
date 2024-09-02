@@ -12,20 +12,16 @@ def is_int(string: str) -> bool:
     return string.isdigit()
 
 
-def is_float(string: str) -> bool:
-    try:
-        float(string)
-        return True
-    except ValueError:
-        return False
+def is_bool(string: str) -> bool:
+    return string.lower() in ("true", "false")
 
 
 def lex(string: str) -> Token:
     if is_int(string):
         return tokens.INT(value=int(string))
 
-    if is_float(string):
-        return tokens.FLOAT(value=float(string))
+    if is_bool(string):
+        return tokens.BOOLEAN(value=eval(string.capitalize()))
 
     match string:
         case Syntax.keys:
@@ -43,6 +39,9 @@ def lex(string: str) -> Token:
         case Syntax.del_:
             return tokens.DEL
 
+    if string.capitalize() == Syntax.none:
+        return tokens.NONE
+
     string = string.replace('"', "").replace("'", "")
     if string.isidentifier():
         return tokens.IDENTIFIER(value=string)
@@ -50,6 +49,9 @@ def lex(string: str) -> Token:
     match string:
         case Syntax.dot:
             return tokens.DOT
+
+        case Syntax.comma:
+            return tokens.COMMA
 
         case Syntax.equal:
             return tokens.EQUAL
@@ -62,6 +64,18 @@ def lex(string: str) -> Token:
 
         case Syntax.right_parenthesis:
             return tokens.RIGHT_PARENTHESIS
+
+        case Syntax.left_bracket:
+            return tokens.LEFT_BRACKET
+
+        case Syntax.right_bracket:
+            return tokens.RIGHT_BRACKET
+
+        case Syntax.left_angle_bracket:
+            return tokens.LEFT_ANGLE_BRACKET
+
+        case Syntax.right_angle_bracket:
+            return tokens.RIGHT_ANGLE_BRACKET
 
         case Syntax.pipe:
             return tokens.PIPE

@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import functools
+import itertools
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterator, Literal, cast
+from typing import Any, Iterable, Iterator, Literal, cast
 
 import hdfq
-from hdfq.exceptions import BinaryOpContext, ContextInfo, FunctionCallContext, GetStatementContext, ParseError
+from hdfq.exceptions import (
+    BinaryOpContext,
+    ContextInfo,
+    DatasetCreationContext,
+    FunctionCallContext,
+    GetStatementContext,
+    ParseError,
+)
 from hdfq.lexer import Token, tokenize
 from hdfq.syntax import Syntax
 from hdfq.tokens import repr_tokens
@@ -44,6 +52,15 @@ class VTNode(Node):
         return self.target, VTNode(self.name, Special.context, self.value)
 
 
+@dataclass
+class DatasetNode(Node):
+    data: str | Node | None
+    shape: tuple[int, ...] | None
+    dtype: str | None
+    chunks: bool
+    maxshape: bool | tuple[int | None, ...] | None
+
+
 class Nodes(functools.partial[Node], Enum):
     Display = functools.partial(Node, "Display")
     Keys = functools.partial(Node, "Keys")
@@ -55,6 +72,7 @@ class Nodes(functools.partial[Node], Enum):
     GetAttr = functools.partial(VTNode, name="GetAttr")
     Assign = functools.partial(VTNode, name="Assign")
     Del = functools.partial(VTNode, name="Del")
+    Dataset = functools.partial(DatasetNode, name="Dataset")
 
 
 class Tree:
@@ -65,17 +83,171 @@ class Tree:
         return f"AST(\n\tbody={self.body}\n)"
 
 
+def _all_int(tokens: list[Token]) -> bool:
+    return bool(len(tokens)) and all(t.kind == Syntax.integer for t in tokens)
+
+
 def match_atom(tokens: list[Token]) -> Node | None:
     match tokens:
-        case (
-            [Token(Syntax.integer, value=value)]
-            | [Token(Syntax.floating, value=value)]
-            | [Token(Syntax.identifier, value=value)]
-        ):
+        # match integer or str identifier
+        case [Token(Syntax.integer, value=value)] | [Token(Syntax.identifier, value=value)]:
             return Nodes.Constant(value=value)
+
+        # match float of type ".123"
+        # case [hdfq.tokens.DOT, *right] if _all_int(right):
+        #     return Nodes.Constant(value=float("." + "".join(str(t.value) for t in right)))
+
+        # match float of type "123."
+        case [*left, hdfq.tokens.DOT] if _all_int(left):
+            return Nodes.Constant(value=float("".join(str(t.value) for t in left)))
+
+    # match float of type "123.456"
+    try:
+        index = tokens.index(hdfq.tokens.DOT)
+    except ValueError:
+        return None
+
+    left, right = tokens[:index], tokens[index + 1 :]
+    if not _all_int(left) or not _all_int(right):
+        return None
+
+    return Nodes.Constant(value=float("".join(str(t.value) for t in left) + "." + "".join(str(t.value) for t in right)))
+
+
+def pairwise(iterable: Iterable[Any]) -> Iterator[tuple[Any, Any]]:
+    iterator = iter(iterable)
+    first, second = None, next(iterator)
+
+    for e in iterator:
+        first = second
+        second = e
+        yield first, second
+
+
+def split_at_commas(tokens: list[Token]) -> list[list[Token]]:
+    if tokens[-1] != hdfq.tokens.COMMA:
+        tokens.append(hdfq.tokens.COMMA)
+
+    key = itertools.accumulate(
+        [a == hdfq.tokens.COMMA and b.kind == Syntax.identifier for a, b in pairwise(tokens)], initial=False
+    )
+    return [list(group) for _, group in itertools.groupby(tokens, lambda _: next(key))]
+
+
+def split_after_right_brackets(tokens: list[Token]) -> list[list[Token]]:
+    return [
+        list(group)
+        for test, group in itertools.groupby(
+            tokens, lambda t: t in (hdfq.tokens.RIGHT_PARENTHESIS, hdfq.tokens.RIGHT_ANGLE_BRACKET)
+        )
+        if not test
+    ]
+
+
+def match_shape(shape: tuple[int, ...] | None, tokens: list[Token], allow_none: bool = False) -> tuple[int, ...] | None:
+    match tokens:
+        case [hdfq.tokens.LEFT_PARENTHESIS, *shape_]:
+            is_comma = [(s == hdfq.tokens.COMMA) if i % 2 else False for i, s in enumerate(shape_)]
+            is_integer = [
+                (isinstance(s.value, int) or allow_none and s.value is None) if not i % 2 else False
+                for i, s in enumerate(shape_)
+            ]
+
+            if not all(c or i for c, i in zip(is_comma, is_integer)):
+                raise ParseError(f"Got unexpected pattern ({repr_tokens(shape_)}) while trying to match a shape")
+
+            if shape is not None:
+                raise ParseError(f"Redefinition of dataset shape ({repr_tokens(shape_)}), previous shape was {shape}")
+
+            return tuple(cast(int, s.value) for i, s in enumerate(shape_) if not i % 2)
+
+        case _:
+            return shape
+
+
+def match_dtype(dtype: str | None, tokens: list[Token]) -> str | None:
+    match tokens:
+        case [hdfq.tokens.LEFT_ANGLE_BRACKET, Token(Syntax.identifier, value=value)]:
+            if not isinstance(value, str):
+                raise ParseError(f"Got unexpected value '{value}' for data type", context=DatasetCreationContext())
+
+            if dtype is not None:
+                raise ParseError(f"Redefinition of data type {value}, previous shape was {dtype}")
+
+            return value
+
+        case _:
+            return dtype
+
+
+def match_dataset(tokens: list[Token]) -> DatasetNode | None:
+    try:
+        rb_index = tokens.index(hdfq.tokens.RIGHT_BRACKET)
+    except ValueError:
+        return None
+
+    data, parameters = tokens[:rb_index], tokens[rb_index + 1 :]
+
+    match data:
+        case [hdfq.tokens.LEFT_BRACKET]:
+            dataset = cast(DatasetNode, Nodes.Dataset(data=None, shape=None, dtype=None, chunks=True, maxshape=None))
+
+        case [hdfq.tokens.LEFT_BRACKET, *content]:
+            data_part, *details = split_at_commas(content)
+
+            data = match_atom(data_part[:-1]) or match_get_statement(data_part[:-1])  # :-1 because of trailing commas
+            if data is None:
+                raise ParseError(f"Got unexpected pattern {repr_tokens(data_part)}", context=DatasetCreationContext())
+
+            dataset = cast(DatasetNode, Nodes.Dataset(data=data, shape=None, dtype=None, chunks=True, maxshape=None))
+
+            for detail in details:
+                match detail:
+                    case [
+                        Token(Syntax.identifier, value="chunks"),
+                        hdfq.tokens.EQUAL,
+                        Token(Syntax.boolean, value=boolean),
+                        hdfq.tokens.COMMA,
+                    ]:
+                        dataset.chunks = cast(bool, boolean)
+
+                    case [
+                        Token(Syntax.identifier, value="maxshape"),
+                        hdfq.tokens.EQUAL,
+                        Token(Syntax.boolean, value=maxshape),
+                        hdfq.tokens.RIGHT_PARENTHESIS,
+                        hdfq.tokens.COMMA,
+                    ]:
+                        assert isinstance(maxshape, bool)
+                        dataset.maxshape = maxshape
+
+                    case [
+                        Token(Syntax.identifier, value="maxshape"),
+                        hdfq.tokens.EQUAL,
+                        *shape,
+                        hdfq.tokens.RIGHT_PARENTHESIS,
+                        hdfq.tokens.COMMA,
+                    ]:
+                        maxshape = match_shape(None, shape, allow_none=True)
+                        if maxshape is None:
+                            raise ParseError("TODO")
+
+                        dataset.maxshape = maxshape
+
+                    case _:
+                        raise ParseError("TODO")
 
         case _:
             return None
+
+    shape, dtype = None, None
+    for parameter in split_after_right_brackets(parameters):
+        shape = match_shape(shape, parameter)
+        dtype = match_dtype(dtype, parameter)
+
+    dataset.shape = shape
+    dataset.dtype = dtype
+    return dataset
 
 
 def matches_whole(tokens: list[Token], allow_empty: bool) -> bool:
@@ -92,7 +264,7 @@ def matches_whole(tokens: list[Token], allow_empty: bool) -> bool:
 
 def match_get_object(tokens: list[Token], *, allow_get_attr: bool, context: ContextInfo | None) -> VTNode:
     match tokens:
-        case [*left, hdfq.tokens.DOT, Token(Syntax.identifier, value=value)]:
+        case [*left, hdfq.tokens.DOT, Token(Syntax.identifier | Syntax.integer, value=value)]:
             target = match_get_statement(left, context=context) if len(left) else Special.context
             return cast(VTNode, Nodes.Get(target=target, value=value))
 
@@ -135,7 +307,9 @@ def match_assignment(tokens: list[Token]) -> Node | None:
     left, right = tokens[:assign_index], tokens[assign_index + 1 :]
     return Nodes.Assign(
         target=match_get_statement_all(left, context=BinaryOpContext("assignment", "left")),
-        value=match_atom(right) or match_get_statement_all(right, context=BinaryOpContext("assignment", "right")),
+        value=match_atom(right)
+        or match_dataset(right)
+        or match_get_statement_all(right, context=BinaryOpContext("assignment", "right")),
     )
 
 

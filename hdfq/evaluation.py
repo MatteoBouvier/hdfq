@@ -1,13 +1,35 @@
+from __future__ import annotations
+
 import sys
+from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
 import ch5mpy as ch
+import numpy.typing as npt
 
 from hdfq.display import display, nice_size_format
 from hdfq.exceptions import EvalError
 from hdfq.parser import Node, Special, Tree, VTNode
 
-EVAL_OBJECT = ch.H5Dict[Any] | ch.Dataset[Any] | ch.AttributeManager | list[str] | dict[str, Any]
+
+@dataclass
+class DatasetInfo:
+    shape: tuple[int, ...] | None
+    dtype: str
+    data: ch.Dataset[Any] | npt.NDArray[Any] | None
+    chunks: bool
+    maxshape: tuple[int | None, ...] | bool
+
+
+EVAL_OBJECT = (
+    ch.H5Dict[Any]
+    | ch.Dataset[Any]
+    | ch.AttributeManager
+    | ch.H5List[ch.H5Dict[Any] | ch.Dataset[Any]]
+    | list[str]
+    | dict[str, Any]
+    | DatasetInfo
+)
 
 
 class EVAL_FUNC_base(Protocol):
@@ -26,7 +48,7 @@ EVAL_FUNC = EVAL_FUNC_base | EVAL_FUNC_get | EVAL_FUNC_set
 
 
 def get_object(obj: EVAL_OBJECT, key: str) -> EVAL_OBJECT:
-    if not isinstance(obj, (ch.H5Dict, dict)):
+    if not isinstance(obj, (ch.H5Dict, dict, ch.H5List)):
         raise EvalError(f"Cannot get object from '{type(obj).__name__}'")
 
     return obj[key]
@@ -40,10 +62,13 @@ def get_attribute(obj: EVAL_OBJECT, key: str) -> EVAL_OBJECT:
 
 
 def get_keys(obj: EVAL_OBJECT) -> list[str]:
-    if not isinstance(obj, ch.H5Dict):
-        raise EvalError(f"Cannot get keys from '{type(obj).__name__}'")
+    if isinstance(obj, ch.H5Dict):
+        return list(obj.keys())
 
-    return list(obj.keys())
+    if isinstance(obj, ch.H5List):
+        return [str(i) for i in range(len(obj))]
+
+    raise EvalError(f"Cannot get keys from '{type(obj).__name__}'")
 
 
 def get_attributes(obj: EVAL_OBJECT) -> dict[str, Any]:
@@ -90,23 +115,23 @@ def get_sizes(obj: EVAL_OBJECT) -> dict[str, Any]:
     return sizes
 
 
-def set_key_value(obj: EVAL_OBJECT, key: str, value: Any) -> None:
-    if not isinstance(obj, (ch.H5Dict, dict, ch.AttributeManager)):
+def set_key_value(obj: EVAL_OBJECT, key: str | int, value: Any) -> None:
+    if not isinstance(obj, (ch.H5Dict, dict, ch.AttributeManager, DatasetInfo)):
         raise EvalError(f"Cannot assign value to '{type(obj).__name__}'")
 
     obj[key] = value
 
 
-def del_object(obj: EVAL_OBJECT, key: str) -> None:
-    if not isinstance(obj, (ch.H5Dict, dict, ch.AttributeManager)):
+def del_object(obj: EVAL_OBJECT, key: str | int) -> None:
+    if not isinstance(obj, (ch.H5Dict, dict, ch.AttributeManager, ch.H5List)):
         raise EvalError(f"Cannot delete value from '{type(obj).__name__}'")
 
     del obj[key]
 
 
-def shallow_eval_statement(target: VTNode, context: EVAL_OBJECT) -> tuple[EVAL_OBJECT, str]:
+def shallow_eval_statement(target: VTNode, context: EVAL_OBJECT) -> tuple[EVAL_OBJECT, str | int]:
     context, key = eval_statement(target.target, context), target.value
-    assert isinstance(key, str)
+    assert isinstance(key, str | int), "invalid key type"
 
     if target.name == "GetAttr":
         if not isinstance(context, ch.H5Dict):
@@ -114,6 +139,49 @@ def shallow_eval_statement(target: VTNode, context: EVAL_OBJECT) -> tuple[EVAL_O
         context = context.attributes
 
     return context, key
+
+
+def create_dataset(
+    data: EVAL_OBJECT | None,
+    shape: tuple[int, ...] | None,
+    dtype: str | None,
+    chunks: bool,
+    maxshape: bool | tuple[int | None, ...] | None,
+) -> ch.AnonymousArrayCreationFunc:
+    if shape is None:
+        if data is None:
+            shape = (0,)
+
+        else:
+            raise EvalError("TODO")
+
+    match data:
+        case None:
+            shape = shape or (0,)
+            dtype = dtype or "f"
+
+            return ch.empty.defer(shape=shape, dtype=dtype, chunks=chunks, maxshape=maxshape)
+
+        case 0:
+            shape = shape or (1,)
+            dtype = dtype or "f"
+
+            return ch.zeros.defer(shape=shape, dtype=dtype, chunks=chunks, maxshape=maxshape)
+
+        case 1:
+            shape = shape or (1,)
+            dtype = dtype or "f"
+
+            return ch.ones.defer(shape=shape, dtype=dtype, chunks=chunks, maxshape=maxshape)
+
+        case int(value):
+            shape = shape or (1,)
+            dtype = dtype or "f"
+
+            return ch.ones.defer(shape=shape, dtype=dtype, chunks=chunks, maxshape=maxshape) * value
+
+        case _:
+            raise EvalError("TODO")
 
 
 def eval_statement(statement: Node | Literal[Special.context], context: EVAL_OBJECT) -> EVAL_OBJECT:
@@ -147,11 +215,14 @@ def eval_statement(statement: Node | Literal[Special.context], context: EVAL_OBJ
         case Node(name="Del", target=target, value=value):
             context = eval_statement(target, context)
             context, value = shallow_eval_statement(value, context)
-            assert isinstance(value, str), "not str : " + str(type(value))
             del_object(context, value)
 
         case Node(name="Constant", value=value):
             context = value
+
+        case Node(name="Dataset", data=data, shape=shape, dtype=dtype, chunks=chunks, maxshape=maxshape):
+            data = None if data is None else eval_statement(data, context)
+            context = create_dataset(data, shape, dtype, chunks, maxshape)
 
     return context
 

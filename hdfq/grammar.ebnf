@@ -6,6 +6,43 @@ statement:
     | descriptor
     | function_call
 
+data: 
+    | '[' data_details ']'
+    | '[' atom data_details ']'
+    | '[' get_statement data_details ']'
+
+data_details: [ ':' 'chunks' '=' BOOL] [ ':' 'maxshape' '=' ( BOOL | shape )]
+
+shape: ( ','.INTEGER+ )
+
+dtype:
+    | int
+    | i
+    | int8
+    | i8
+    | int16
+    | i16
+    | int32
+    | i32
+    | int64
+    | i64
+    | float
+    | f
+    | float16
+    | f16
+    | float32
+    | f32
+    | float64
+    | f64
+    | float128
+    | f128
+    | str
+    | string
+
+type: < dtype >
+
+dataset: data shape? type?
+
 get_statement_all:
     | ''
     | '.'
@@ -22,6 +59,7 @@ get_attribute: '#' IDENTIFIER
 assignment: 
     | get_statement_all '=' atom
     | get_statement_all '=' get_statement
+    | get_statement '=' dataset
 
 atom:
     | INTEGER
